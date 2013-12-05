@@ -1,4 +1,3 @@
-package hungerGames;
 /**
  * CIS 120 HW10
  * (c) University of Pennsylvania
@@ -25,21 +24,22 @@ import java.util.Random;
 @SuppressWarnings("serial")
 public class GameCourt extends JPanel {
 	
-	private Player player;
-	public Field field = new Field(FIELD_SIZE);
-	private int numTrees = 8;
+	private Player player = new Player();
+	private Field field = new Field(FIELD_SIZE);
+	private int numTrees = 0, numRocks = 10;
 	private Random random = new Random();
+	public boolean attackMode = false;
 	
 	public static boolean playing = false;  // whether the game is running
 	private JLabel status;       // Current status text (i.e. Running...)
 
 	// Game constants
 	public static final int COURT_WIDTH = 600;
-	public static final int COURT_HEIGHT = 600;
-	public static final int FIELD_SIZE = 2000 + Player.SIZE;
+	public static final int COURT_HEIGHT = COURT_WIDTH;
+	public static final int FIELD_SIZE = 600 + Player.SIZE;
 	public static final int SQUARE_VELOCITY = 5;
 	// Update interval for timer in milliseconds 
-	public static final int INTERVAL = 30; 
+	public static final int INTERVAL = 20; 
 	
 	private boolean[] keysDown = {false, false, false, false};
 
@@ -76,7 +76,7 @@ public class GameCourt extends JPanel {
 				else if (ke == KeyEvent.VK_RIGHT || ke == KeyEvent.VK_D) keysDown[1] = true;
 				else if (ke == KeyEvent.VK_DOWN || ke == KeyEvent.VK_S) keysDown[2] = true;
 				else if (ke == KeyEvent.VK_UP || ke == KeyEvent.VK_W) keysDown[3] = true;
-				
+				else if (ke == KeyEvent.VK_SPACE) attackMode = true;
 			}
 			public void keyReleased(KeyEvent e){
 				int ke = e.getKeyCode();
@@ -84,13 +84,34 @@ public class GameCourt extends JPanel {
 				else if (ke == KeyEvent.VK_RIGHT || ke == KeyEvent.VK_D) keysDown[1] = false;
 				else if (ke == KeyEvent.VK_DOWN || ke == KeyEvent.VK_S) keysDown[2] = false;
 				else if (ke == KeyEvent.VK_UP || ke == KeyEvent.VK_W) keysDown[3] = false;
+				else if (ke == KeyEvent.VK_SPACE) attackMode = false;
 			}
 		});
 
 		addMouseListener(new MouseListener() {
 			public void mousePressed(MouseEvent e){
-				int me = e.getButton();
-				field.addNature(new ClickAction(e.getX(),e.getY()));
+				if (!attackMode || (attackMode && player.leftArm == null)) { 
+					int me = e.getButton();
+					field.addNature(new ClickAction(e.getX(),e.getY()));
+					if (me == MouseEvent.BUTTON1) {
+						Item clicked = field.nearLocation(e.getX()-field.pos_x,e.getY()- field.pos_y);
+						if (clicked != null){
+							clicked.pickUp();
+							player.addItem(clicked);
+							field.removeObj(clicked);
+						}
+					}
+				} else if (attackMode && player.leftArm != null && e.getButton() == MouseEvent.BUTTON1){
+						int range = player.leftArm.getDist();
+						if (player.leftArm.isRange() && player.ammo != null){
+							if (player.ammo instanceof Rock) {
+								Rock r = new Rock(player.pos_x, player.pos_y, field);
+								field.addItem(r);
+								r.toss(20, e.getX(), e.getY());
+								
+							}
+						}
+				}
 			}
 			public void mouseReleased(MouseEvent e){
 				
@@ -110,14 +131,20 @@ public class GameCourt extends JPanel {
 
 	/** (Re-)set the state of the game to its initial state.
 	 */
-	public void start() {
-
-		player = new Player(COURT_WIDTH, COURT_HEIGHT);
+	public void start() {;
 		
 		for (int i = 0; i < numTrees; i++){
 			field.addNature(new Tree(random.nextInt(field.width-Tree.size),
 									 random.nextInt(field.height-Tree.size), field));
 		}
+		for (int i = 0; i < numRocks; i++){
+			field.addItem(new Rock(random.nextInt(field.width-Rock.SIZE),
+									 random.nextInt(field.height- Rock.SIZE), field));
+		}
+		
+		field.addItem(new SlingShot(random.nextInt(field.width - SlingShot.xSIZE),
+									random.nextInt(field.height - SlingShot.ySIZE),
+									field));
 		
 		playing = true;
 		
@@ -141,7 +168,7 @@ public class GameCourt extends JPanel {
 			if (!keysDown[0] && !keysDown[1]) field.v_x = 0;
 			if (!keysDown[2] && !keysDown[3]) field.v_y = 0;
 			
-			//assess collisions with nature
+			//assess collisions with nature and remove useless objects
 			for (GameObj go: field.getNature()){
 				if (go instanceof Tree) {
 					if (((Tree)go).willIntersectPlayer()) {
@@ -152,11 +179,15 @@ public class GameCourt extends JPanel {
 						}
 					}
 				}
-				
 			}
+			
+			
 			//move the field and its contents
 			field.move();
-			
+			for (GameObj go: field.getNature()){
+				go.clip();
+			}
+
 			//player stays static in center of field
 			int playerX = (-field.pos_x + COURT_WIDTH/2) - FIELD_SIZE/2;
 			int playerY = (-field.pos_y + COURT_HEIGHT/2) - FIELD_SIZE/2;
@@ -164,16 +195,31 @@ public class GameCourt extends JPanel {
 			repaint();
 		} 
 	}
+	
+	public Player getPlayer(){
+		return player;
+	}
+	
+	public Field getField() {
+		return field;
+	}
 
 	@Override 
 	public void paintComponent(Graphics g){
 		super.paintComponent(g);
 		field.draw(g);
+		for (Item item: field.getItems()) item.draw(g);
 		player.draw(g);
-		
-		for (GameObj go: field.getNature()){
-			go.draw(g);
+		for (Item item: field.getProjectiles()) {
+			item.move();
 		}
+		for (GameObj go: field.getNature()) go.draw(g);
+		field.removeClicks();
+		if (attackMode && player.leftArm != null) {
+			int dist = player.leftArm.getDist();
+			g.drawOval(COURT_WIDTH/2-dist, COURT_HEIGHT/2-dist,2*dist,2*dist);
+		}
+			
 	}
 
 	@Override

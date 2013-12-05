@@ -1,14 +1,15 @@
-package hungerGames;
-
 import java.awt.Color;
 import java.awt.Graphics;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 public class Field extends GameObj{
 
 	private final int size;
 	//public int v_x = 0, v_y = 0;
 	private ArrayList<GameObj> nature = new ArrayList<GameObj>();
+	private ArrayList<Item> items = new ArrayList<Item>();
+	private ArrayList<Item>	projectiles = new ArrayList<Item>();
 	
 	public Field() {
 		super(0,0, 0, 0, 1000, 1000, GameCourt.COURT_WIDTH, GameCourt.COURT_HEIGHT);
@@ -34,8 +35,54 @@ public class Field extends GameObj{
 		nature.add(go);
 	}
 	
+	public void addItem(Item item) {
+		items.add(item);
+	}
+	
+	public void addProjectile(Item item) {
+		projectiles.add(item);
+	}
+	
 	public ArrayList<GameObj> getNature(){
 		return nature;
+	}
+	
+	public ArrayList<Item> getItems(){
+		return items;
+	}
+	
+	public ArrayList<Item> getProjectiles(){
+		return projectiles;
+	}
+	
+	public Item nearLocation(int x, int y) {
+		Item go = null;
+		for (Item g: items){
+			if (Math.abs(g.x -x) <= 20 && Math.abs(g.y - y) <= 20) {
+				go = g;
+			}
+		}
+		return go;
+	}
+	
+	public void removeClicks(){
+		Iterator<GameObj> gos = nature.iterator();
+		while (gos.hasNext()){
+			GameObj go = gos.next();
+			if (go instanceof ClickAction){
+				if (((ClickAction)(go)).getDisappear() == 0) {
+					gos.remove();
+				}
+			}
+		}
+	}
+	
+	public void removeObj(GameObj go){
+		nature.remove(go);
+	}
+	
+	public void removeObj(Item item){
+		items.remove(item);
 	}
 
 	@Override
@@ -47,17 +94,6 @@ public class Field extends GameObj{
 			g.drawLine(i+pos_x, pos_y, i+pos_x, size+pos_y);
 			g.drawLine(pos_x, i+pos_y, size+pos_x, i+pos_y);
 		}
-	}
-	
-	public void move(){
-		pos_x += v_x;
-		pos_y += v_y;
-
-		for (GameObj go: nature){
-			go.clip();
-		}
-		
-		clip();
 	}
 	
 	public void clip(){

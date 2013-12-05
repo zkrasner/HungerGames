@@ -1,4 +1,3 @@
-package hungerGames;
 /**
  * CIS 120 HW10
  * (c) University of Pennsylvania
@@ -31,12 +30,17 @@ public class Game implements Runnable {
 
         // Main playing area
         final GameCourt court = new GameCourt(status);
-        frame.add(court, BorderLayout.WEST);
+        frame.add(court, BorderLayout.CENTER);
         
         final JLabel equipment = new JLabel("Equipment");
-        final InventoryPanel invent = new InventoryPanel(equipment, court.field);
+        final EquipmentPanel equip = new EquipmentPanel(equipment, court.getField(), court.getPlayer());
+        equip.setBackground(new Color(65, 80, 0));
+        frame.add(equip, BorderLayout.EAST);
+        
+        final JLabel inventory = new JLabel("inventory");
+        final InventoryPanel invent = new InventoryPanel(inventory, court.getPlayer(), equip);
         invent.setBackground(new Color(65, 80, 0));
-        frame.add(invent, BorderLayout.EAST);
+        frame.add(invent, BorderLayout.WEST);
         
         // Reset button
         final JPanel control_panel = new JPanel();

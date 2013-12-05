@@ -1,5 +1,3 @@
-package hungerGames;
-
 import java.awt.Color;
 import java.awt.Graphics;
 
@@ -15,6 +13,10 @@ public class ClickAction extends GameObj{
 	
 	public void tickTock(){
 		if (disappear > 0) disappear -= 2;
+	}
+	
+	public int getDisappear(){
+		return disappear;
 	}
 	
 	@Override
